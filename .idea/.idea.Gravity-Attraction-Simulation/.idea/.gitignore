@@ -1,0 +1,13 @@
+﻿# Default ignored files
+/shelf/
+/workspace.xml
+# Rider ignored files
+/projectSettingsUpdater.xml
+/contentModel.xml
+/.idea.Gravity-Attraction-Simulation.iml
+/modules.xml
+# Datasource local storage ignored files
+/../../../../../../:\Projects\Gravity-Attraction-Simulation\.idea\.idea.Gravity-Attraction-Simulation\.idea/dataSources/
+/dataSources.local.xml
+# Editor-based HTTP Client requests
+/httpRequests/
