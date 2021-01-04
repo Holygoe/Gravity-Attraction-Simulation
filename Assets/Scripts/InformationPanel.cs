@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
-public class Menu : MonoBehaviour
+public class InformationPanel : MonoBehaviour
 {
     public const string SYSTEM_SIZE_PREF = "SYSTEM_SIZE";
 
@@ -27,15 +27,15 @@ public class Menu : MonoBehaviour
         slider.value = systemSize;
         SetCount(systemSize);
 
-        totalMassText.text = $"Total mass: {attraction.SystemData.TotalMass}";
+        totalMassText.text = $"Total mass: {attraction.GravitySystem.TotalMass}";
     }
 
     private void Update()
     {
-        systemSizeText.text = $"The system size: {attraction.SystemData.Size}";
-        coreSizeText.text = $"The core size: {attraction.SystemData.CoreSize}";
-        coreRadiusText.text = $"The core radius: {attraction.SystemData.CoreRadius}";
-        //coreMassText.text = $"The core mass: {attraction.SystemData.CoreMass}";
+        systemSizeText.text = $"The system size: {attraction.GravitySystem.Size}";
+        coreSizeText.text = $"The core size: {attraction.GravitySystem.CoreSize}";
+        coreRadiusText.text = $"The core radius: {attraction.GravitySystem.CoreRadius}";
+        coreMassText.text = $"The core mass: {attraction.GravitySystem.CoreMass}";
     }
 
     private void SetCount(float value)

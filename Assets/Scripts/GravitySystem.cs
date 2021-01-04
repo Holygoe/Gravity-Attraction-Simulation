@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-public class GravitySystemData
+public class GravitySystem
 {
     private const float MIN_START_POINT_SPEED = 1f;
     private const float MAX_START_POINT_SPEED = 2f;
@@ -24,6 +24,8 @@ public class GravitySystemData
     private float _deltaTime;
     private float _sqrCoreRadius;
     
+    public float CoreMass { get; private set; }
+    
     public float CoreRadius { get; private set; }
 
     public int CoreSize { get; private set; }
@@ -31,10 +33,12 @@ public class GravitySystemData
     public int OutCoreSize { get; private set; }
     
     public Vector3 MassCenter { get; private set; }
+    
+    public Vector3 CoreCenter { get; private set; }
 
     public int Size { get; private set; }
     
-    public GravitySystemData(ParticleSystem system, int systemSize)
+    public GravitySystem(ParticleSystem system, int systemSize)
     {
         var systemMain = system.main;
         var systemShape = system.shape;
@@ -56,7 +60,8 @@ public class GravitySystemData
         for (var i = 0; i < Size; i++)
         {
             var vector = Particles[i].position;
-            var boost = Mathf.Sqrt(vector.magnitude) / 2;
+            vector.y = 0;
+            var boost = Mathf.Sqrt(vector.magnitude * 0.1f);
             var rawVelocity = vector.normalized;
             
             rawVelocity = new Vector3(rawVelocity.z, rawVelocity.y, -rawVelocity.x);
@@ -64,13 +69,14 @@ public class GravitySystemData
 
             TotalMass += GetPointMass(Particles[i].startSize);
         }
-        
+
+        CoreMass = TotalMass;
         _system.SetParticles(Particles, Size);
         _superMass = TotalMass * SUPER_MASS_SHARE;
         CoreRadius = MIN_CORE_RADIUS;
         _sqrCoreRadius = CoreRadius * CoreRadius;
 
-        float GetSystemRadius() => SYSTEM_RADIUS_CONSTANT * Mathf.Pow(systemSize * 3f / (4f * Mathf.PI), 1f / 3f); 
+        float GetSystemRadius() => SYSTEM_RADIUS_CONSTANT * Mathf.Pow(systemSize * 3f / (4f * Mathf.PI), 1f / 2.5f); 
     }
 
     public void Read(float deltaTime)
@@ -79,13 +85,16 @@ public class GravitySystemData
         Size = _system.GetParticles(Particles);
 
         var massCenter = Vector3.zero;
+        var coreCenter = Vector3.zero;
+
         CoreSize = 0;
         OutCoreSize = 0;
+        CoreMass = 0;
 
         for (var i = 0; i < Size; i++)
         {
             MassData[i] = GetPointMass(Particles[i].startSize);
-            CoreData[i] = (MassCenter - Particles[i].position).sqrMagnitude < _sqrCoreRadius;
+            CoreData[i] = (CoreCenter - Particles[i].position).sqrMagnitude < _sqrCoreRadius;
             Particles[i].remainingLifetime = Particles[i].startLifetime;
             massCenter += MassData[i] * Particles[i].position;
 
@@ -93,6 +102,8 @@ public class GravitySystemData
             {
                 InCore[CoreSize] = i;
                 CoreSize++;
+                coreCenter += MassData[i] * Particles[i].position;
+                CoreMass += MassData[i];
             }
             else
             {
@@ -100,22 +111,11 @@ public class GravitySystemData
                 OutCoreSize++;
             }
         }
-
+        
         MassCenter = massCenter / TotalMass;
-        
-        if (CoreSize > OPTIMAL_CORE_SIZE)
-        {
-            if (CoreRadius > MIN_CORE_RADIUS)
-            {
-                CoreRadius -= _deltaTime * CORE_CHANGING_RATE;
-            }
-        }
-        else if (CoreRadius < MAX_CORE_RADIUS)
-        {
-            CoreRadius += _deltaTime * CORE_CHANGING_RATE;
-        }
-        
-        _sqrCoreRadius = CoreRadius * CoreRadius;
+        CoreCenter = CoreMass == 0 ? MassCenter : coreCenter / CoreMass;
+
+        UpdateCoreRadius();
     }
 
     public void Write()
@@ -128,19 +128,38 @@ public class GravitySystemData
         return new Point(this, index);
     }
 
-    public static Burst JoinPoints(in Point pi, in Point pj, in Vector3 difference)
+    public static Burst JoinPoints(in Point bigger, in Point smaller, in Vector3 difference)
     {
-        var minSize = pi.Size < pj.Size ? pi.Size : pj.Size;
-        var mass = pi.Mass + pj.Mass;
+        var burstPower = smaller.Size * 3;
+        var mass = bigger.Mass + smaller.Mass;
 
-        pi.Velocity = (pi.Velocity * pi.Mass + pj.Velocity * pj.Mass) / mass;
-        pi.Size = GetPointSize(mass);
-        pi.Position += pj.Mass / mass * difference;
-        pi.Mass = mass;
+        bigger.Velocity = (bigger.Velocity * bigger.Mass + smaller.Velocity * smaller.Mass) / mass;
+        bigger.Size = GetPointSize(mass);
+        bigger.Position += smaller.Mass / mass * difference;
+        bigger.Mass = mass;
 
-        pj.ResetToZero();
+        smaller.ResetToZero();
 
-        return new Burst(pi.Position, minSize * 3, pi.Velocity);
+        return new Burst(bigger.Position, burstPower, bigger.Velocity);
+    }
+
+    private void UpdateCoreRadius()
+    {
+        var difference = _deltaTime * CORE_CHANGING_RATE * CoreRadius;
+        
+        if (CoreSize > OPTIMAL_CORE_SIZE)
+        {
+            if (CoreRadius > MIN_CORE_RADIUS)
+            {
+                CoreRadius -= difference;
+            }
+        }
+        else if (CoreRadius < MAX_CORE_RADIUS)
+        {
+            CoreRadius += difference;
+        }
+        
+        _sqrCoreRadius = CoreRadius * CoreRadius;
     }
 
     private static float GetPointMass(float size) => 4f / 3f * Mathf.PI * Mathf.Pow(size, 3);

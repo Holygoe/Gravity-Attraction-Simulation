@@ -2,48 +2,48 @@
 
 public readonly struct Point
 {
-    private readonly GravitySystemData _gravitySystemData;
+    private readonly GravitySystem _gravitySystem;
     private readonly int _index;
 
     public bool IsInCore
     {
-        get => _gravitySystemData.CoreData [_index];
-        set => _gravitySystemData.CoreData [_index] = value;
+        get => _gravitySystem.CoreData [_index];
+        set => _gravitySystem.CoreData [_index] = value;
     }
 
     public float Mass
     {
-        get => _gravitySystemData.MassData [_index];
-        set => _gravitySystemData.MassData [_index] = value;
+        get => _gravitySystem.MassData [_index];
+        set => _gravitySystem.MassData [_index] = value;
     }
 
     public Vector3 Position
     {
-        get => _gravitySystemData.Particles[_index].position;
-        set => _gravitySystemData.Particles[_index].position = value;
+        get => _gravitySystem.Particles[_index].position;
+        set => _gravitySystem.Particles[_index].position = value;
     }
 
     public float Size
     {
-        get => _gravitySystemData.Particles[_index].startSize;
-        set => _gravitySystemData.Particles[_index].startSize = value;
+        get => _gravitySystem.Particles[_index].startSize;
+        set => _gravitySystem.Particles[_index].startSize = value;
     }
 
     public Vector3 Velocity
     {
-        get => _gravitySystemData.Particles[_index].velocity;
-        set => _gravitySystemData.Particles[_index].velocity = value;
+        get => _gravitySystem.Particles[_index].velocity;
+        set => _gravitySystem.Particles[_index].velocity = value;
     }
 
-    public Point(GravitySystemData gravitySystemData, int index)
+    public Point(GravitySystem gravitySystem, int index)
     {
         _index = index;
-        _gravitySystemData = gravitySystemData;
+        _gravitySystem = gravitySystem;
     }
 
     public void ResetToZero()
     {
-        _gravitySystemData.Particles[_index].remainingLifetime = 0;
+        _gravitySystem.Particles[_index].remainingLifetime = 0;
         Mass = 0;
         IsInCore = false;
     }

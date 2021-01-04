@@ -9,19 +9,18 @@ public class Attraction : MonoBehaviour
     private const float GRAVITATIONAL_CONSTANT = 7;
     
     [SerializeField] private ParticleSystem burstSfx;
-    [SerializeField] private Transform viewPoint;
 
     private CinemachineImpulseSource _impulseSource;
     private SoundMaker _soundMaker;
 
-    public GravitySystemData SystemData { get; private set; }
+    public GravitySystem GravitySystem { get; private set; }
 
     private void Start()
     {
-        var systemSize = PlayerPrefs.GetInt(Menu.SYSTEM_SIZE_PREF, DEFAULT_SYSTEM_SIZE);
+        var systemSize = PlayerPrefs.GetInt(InformationPanel.SYSTEM_SIZE_PREF, DEFAULT_SYSTEM_SIZE);
         var system =  GetComponent<ParticleSystem>();
         
-        SystemData = new GravitySystemData(system, systemSize);
+        GravitySystem = new GravitySystem(system, systemSize);
         _soundMaker = GetComponent<SoundMaker>();
         _impulseSource = GetComponent<CinemachineImpulseSource>();
     }
@@ -29,18 +28,17 @@ public class Attraction : MonoBehaviour
     private void FixedUpdate()
     {
         var deltaTime = Time.fixedDeltaTime;
-        SystemData.Read(Time.fixedDeltaTime);
-        viewPoint.position = SystemData.MassCenter;
+        GravitySystem.Read(Time.fixedDeltaTime);
 
-        for (var i = 0; i < SystemData.CoreSize; i++)
+        for (var i = 0; i < GravitySystem.CoreSize; i++)
         {
-            var pi = SystemData.GetPoint(SystemData.InCore[i]);
+            var pi = GravitySystem.GetPoint(GravitySystem.InCore[i]);
             
             if (pi.Mass == 0) continue;
             
-            for (var j = i + 1; j < SystemData.CoreSize; j++)
+            for (var j = i + 1; j < GravitySystem.CoreSize; j++)
             {
-                var pj = SystemData.GetPoint(SystemData.InCore[j]);
+                var pj = GravitySystem.GetPoint(GravitySystem.InCore[j]);
 
                 if (pj.Mass == 0) continue;
                 
@@ -48,10 +46,17 @@ public class Attraction : MonoBehaviour
 
                 if (difference.sqrMagnitude * 4 < Mathf.Pow(pi.Size + pj.Size, 2))
                 {
-                    var burst = GravitySystemData.JoinPoints(in pi, in pj, in difference);
-                    PlayBurstFx(burst);
+                    var canContinue = pi.Size > pj.Size;
                     
-                    continue;
+                    var burst = canContinue
+                        ? GravitySystem.JoinPoints(in pi, in pj, in difference)
+                        : GravitySystem.JoinPoints(in pj, in pi, in difference);
+                    
+                    PlayBurstFx(burst);
+
+                    if (canContinue) continue;
+
+                    break;
                 }
 
                 var deltaForce = GetForce(pi.Mass, pj.Mass, difference) * deltaTime;
@@ -66,12 +71,12 @@ public class Attraction : MonoBehaviour
             }
         }
 
-        for (var i = 0; i < SystemData.OutCoreSize; i++)
+        for (var i = 0; i < GravitySystem.OutCoreSize; i++)
         {
-            var pi = SystemData.GetPoint(SystemData.OutCore[i]);
+            var pi = GravitySystem.GetPoint(GravitySystem.OutCore[i]);
             
-            var difference = -pi.Position;
-            var force = GetForce(pi.Mass, SystemData.TotalMass - pi.Mass, difference);
+            var difference = GravitySystem.CoreCenter - pi.Position;
+            var force = GetForce(pi.Mass, GravitySystem.CoreMass, difference);
             pi.Velocity += deltaTime / pi.Mass * force;
             
             if (pi.Velocity.sqrMagnitude > SQR_MAX_SPEED)
@@ -80,10 +85,10 @@ public class Attraction : MonoBehaviour
             }
         }
 
-        SystemData.Write();
+        GravitySystem.Write();
     }
 
-    private Vector3 GetForce(float massI, float massJ, Vector3 difference)
+    private static Vector3 GetForce(float massI, float massJ, Vector3 difference)
     {
         return GRAVITATIONAL_CONSTANT * massI * massJ 
                / difference.sqrMagnitude
