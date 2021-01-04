@@ -14,7 +14,7 @@ public class InputController : MonoBehaviour
 
     private void Start()
     {
-        SetCurrentCamera(0);
+        SetCurrentCamera(cameras.Length - 1);
     }
 
     // ReSharper disable once UnusedMember.Local

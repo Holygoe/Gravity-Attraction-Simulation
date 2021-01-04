@@ -1,4 +1,3 @@
-using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -8,10 +7,14 @@ public class Menu : MonoBehaviour
 {
     public const string SYSTEM_SIZE_PREF = "SYSTEM_SIZE";
 
-    [SerializeField] private Simulation simulation;
+    [SerializeField] private Attraction attraction;
     [SerializeField] private Slider slider;
     [SerializeField] private TextMeshProUGUI initialSystemSizeText;
     [SerializeField] private TextMeshProUGUI systemSizeText;
+    [SerializeField] private TextMeshProUGUI coreSizeText;
+    [SerializeField] private TextMeshProUGUI totalMassText;
+    [SerializeField] private TextMeshProUGUI coreRadiusText;
+    [SerializeField] private TextMeshProUGUI coreMassText;
 
     private void Start()
     {
@@ -20,14 +23,19 @@ public class Menu : MonoBehaviour
     
     private void OnEnable()
     {
-        var systemSize = PlayerPrefs.GetInt(SYSTEM_SIZE_PREF, Simulation.DEFAULT_SYSTEM_SIZE);
+        var systemSize = PlayerPrefs.GetInt(SYSTEM_SIZE_PREF, Attraction.DEFAULT_SYSTEM_SIZE);
         slider.value = systemSize;
         SetCount(systemSize);
+
+        totalMassText.text = $"Total mass: {attraction.SystemData.TotalMass}";
     }
 
     private void Update()
     {
-        systemSizeText.text = $"System size: {simulation.CurrentSystemSize}";
+        systemSizeText.text = $"The system size: {attraction.SystemData.Size}";
+        coreSizeText.text = $"The core size: {attraction.SystemData.CoreSize}";
+        coreRadiusText.text = $"The core radius: {attraction.SystemData.CoreRadius}";
+        //coreMassText.text = $"The core mass: {attraction.SystemData.CoreMass}";
     }
 
     private void SetCount(float value)
