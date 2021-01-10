@@ -1,17 +1,14 @@
-﻿using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 
 public class GravitySystem
 {
-    private const float MIN_START_POINT_SPEED = 1f;
-    private const float MAX_START_POINT_SPEED = 2f;
     private const float SYSTEM_RADIUS_CONSTANT = 0.5f;
     private const float MIN_CORE_RADIUS = 1;
     private const float MAX_CORE_RADIUS = 20;
     private const float CORE_CHANGING_RATE = 1;
     private const float CORE_SIZE_SHARE = 0.5f;
-    private const float GRAVITATIONAL_CONSTANT = 4f;
-    private const float MAX_SPEED = 3.5f;
+    private const float GRAVITATIONAL_CONSTANT = 7f;
+    private const float MAX_SPEED = 4f;
     private const float SQR_MAX_SPEED = MAX_SPEED * MAX_SPEED;
 
     public readonly float TotalMass;
@@ -61,11 +58,11 @@ public class GravitySystem
         {
             var vector = _points[i].position;
             vector.y = 0;
-            var boost = Mathf.Sqrt(vector.magnitude * 0.1f);
+            var speed = Mathf.Pow(vector.magnitude * 0.1f, 3) + 0.5f;
             var rawVelocity = vector.normalized;
             
             rawVelocity = new Vector3(rawVelocity.z, rawVelocity.y, -rawVelocity.x);
-            _points[i].velocity = Random.Range(MIN_START_POINT_SPEED, MAX_START_POINT_SPEED) * boost * rawVelocity;
+            _points[i].velocity = speed * rawVelocity;
 
             TotalMass += GetPointMass(_points[i].startSize);
         }
@@ -137,8 +134,10 @@ public class GravitySystem
         _system.SetParticles(_points, Size);
     }
 
-    public IEnumerable<Burst> UpdateCore()
+    public int UpdateCore(Burst[] bursts)
     {
+        var burstCount = 0;
+
         for (var iCoreIndex = 0; iCoreIndex < CoreSize; iCoreIndex++)
         {
             var i = _inCore[iCoreIndex];
@@ -159,17 +158,20 @@ public class GravitySystem
                 
                 var difference = _points[j].position - _points[i].position;
 
-                const float COLLISION_FACTOR = 0.3f * 0.3f;
+                const float COLLISION_FACTOR = 0.2f * 0.2f;
                 
                 if (difference.sqrMagnitude < Square(iSize + jSize) * COLLISION_FACTOR)
                 {
                     var isMainPointBigger = iSize > jSize;
                     
-                    var burst = isMainPointBigger
+                    bursts[burstCount] = isMainPointBigger
                         ? JoinPoints(i, j, in difference)
                         : JoinPoints(j, i, in difference);
 
-                    yield return burst;
+                    if (burstCount < bursts.Length - 1)
+                    {
+                        burstCount++;
+                    }
                     
                     if (isMainPointBigger) continue;
 
@@ -182,6 +184,8 @@ public class GravitySystem
                 _points[j].velocity -= deltaForce / jMass;
             }
         }
+
+        return burstCount;
     }
 
     public void UpdateOutCore()
@@ -196,21 +200,24 @@ public class GravitySystem
         }
     }
     
-    private Burst JoinPoints(int b, int s, in Vector3 difference)
+    private Burst JoinPoints(int a, int b, in Vector3 difference)
     {
-        var burstPower = _mass[s];
-        var mass = _mass[b] + _mass[s];
+        var initialMomentum = _mass[a] * _points[a].velocity.magnitude + _mass[b] * _points[b].velocity.magnitude;
+        var mass = _mass[a] + _mass[b];
 
-        _points[b].velocity = (_points[b].velocity * _mass[b] + _points[s].velocity * _mass[s]) / mass;
-        _points[b].startSize = GetPointSize(mass);
-        _points[b].position += _mass[s] / mass * difference;
-        _mass[b] = mass;
+        _points[a].velocity += _points[b].velocity * _mass[b] / _mass[a];
+        _points[a].startSize = GetPointSize(mass);
+        _points[a].position += _mass[b] / mass * difference;
+        _mass[a] = mass;
 
-        _mass[s] = 0;
-        _points[s].startSize = 0;
-        _points[s].remainingLifetime = 0;
+        var finalMomentum = _points[a].velocity.magnitude * mass;
+        var  releasedEnergy = Square(initialMomentum - finalMomentum) / (2 * mass);
 
-        return new Burst(_points[s].position, burstPower, _points[b].velocity);
+        _mass[b] = 0;
+        _points[b].startSize = 0;
+        _points[b].remainingLifetime = 0;
+
+        return new Burst(_points[b].position,  releasedEnergy, _points[a].velocity);
     }
 
     private void UpdateCoreRadius()

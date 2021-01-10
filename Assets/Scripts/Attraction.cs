@@ -1,25 +1,25 @@
-using System.Collections.Generic;
 using Cinemachine;
 using UnityEngine;
 
 public class Attraction : MonoBehaviour
 {
     public const int DEFAULT_SYSTEM_SIZE = 200;
-    
 
     [SerializeField] private ParticleSystem burstSfx;
 
     private CinemachineImpulseSource _impulseSource;
     private SoundMaker _soundMaker;
+    private Burst[] _bursts;
 
     public GravitySystem GravitySystem { get; private set; }
 
     private void Start()
     {
-        var systemSize = PlayerPrefs.GetInt(InformationPanel.SYSTEM_SIZE_PREF, DEFAULT_SYSTEM_SIZE);
+        var systemSize = 2000; //PlayerPrefs.GetInt(InformationPanel.SYSTEM_SIZE_PREF, DEFAULT_SYSTEM_SIZE);
         var system =  GetComponent<ParticleSystem>();
         
         GravitySystem = new GravitySystem(system, systemSize);
+        _bursts = new Burst[systemSize];
         _soundMaker = GetComponent<SoundMaker>();
         _impulseSource = GetComponent<CinemachineImpulseSource>();
     }
@@ -28,30 +28,32 @@ public class Attraction : MonoBehaviour
     {
         GravitySystem.Read(Time.fixedDeltaTime);
 
-        var bursts = GravitySystem.UpdateCore();
-        PlayBurstFx(bursts);
+        var burstCount = GravitySystem.UpdateCore(_bursts);
+        PlayBurstFx(burstCount);
         GravitySystem.UpdateOutCore();
 
         GravitySystem.Write();
     }
 
-    private void PlayBurstFx(IEnumerable<Burst> bursts)
+    private void PlayBurstFx(int burstCount)
     {
-        foreach (var burst in bursts)
+        for (var i = 0; i < burstCount; i++)
         {
-            var size = Mathf.Pow(burst.Power, 1f / 1.2f) * 4;
+            if (_bursts[i].Energy <= 0) continue;
             
+            var flashSize = Mathf.Sqrt(_bursts[i].Energy * 10);
+
             var param = new ParticleSystem.EmitParams
             {
-                velocity = burst.Velocity * 0.5f,
-                startSize = size,
-                startLifetime = size * 3,
-                position = burst.Position,
+                velocity = _bursts[i].Velocity * 0.5f,
+                startSize = flashSize,
+                startLifetime = flashSize,
+                position = _bursts[i].Position,
             };
-            
-            _soundMaker.Play(burst.Position, burst.Power * 20);
+
+            _soundMaker.Play(_bursts[i].Position, flashSize * 2);
             burstSfx.Emit(param, 1);
-            _impulseSource.GenerateImpulse(size * 2);
+            _impulseSource.GenerateImpulse(flashSize * 2);
         }
     }
 }
