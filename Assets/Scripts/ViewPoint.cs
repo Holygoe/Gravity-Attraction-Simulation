@@ -16,13 +16,13 @@ public class ViewPoint : MonoBehaviour
         transform.position = type switch
         {
             Type.MassCenter => _attraction.GravitySystem.MassCenter,
-            Type.CoreCenter => _attraction.GravitySystem.CoreCenter,
+            Type.HeaviestPoint => _attraction.GravitySystem.HeaviestPoint,
             _ => throw new System.ArgumentOutOfRangeException()
         };
     }
 
     private enum Type
     {
-        MassCenter, CoreCenter
+        MassCenter, HeaviestPoint
     }
 }

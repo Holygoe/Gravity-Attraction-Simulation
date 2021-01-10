@@ -3,13 +3,13 @@ using UnityEngine.Audio;
 
 public class SoundMaker : MonoBehaviour
 {
-    private const int SIZE = 100;
+    private const int SIZE = 300;
     
     [SerializeField] private AudioClip[] clips;
     [SerializeField] private AudioMixerGroup output;
 
     private AudioSource[] _sources;
-    private int _current;
+    private int _currentSource;
 
     private void Start()
     {
@@ -23,16 +23,18 @@ public class SoundMaker : MonoBehaviour
         }
     }
 
-    public void Play(Vector3 position)
+    public void Play(Vector3 position, float volume)
     {
-        ref var source = ref _sources[_current];
+        var source = _sources[_currentSource];
+
         source.transform.position = position;
-        source.PlayOneShot(clips[Random.Range(0, clips.Length)]);
-        _current++;
-        
-        if (_current >= SIZE)
+        source.PlayOneShot(clips[Random.Range(0, clips.Length)], volume);
+
+        _currentSource++;
+
+        if (_currentSource >= SIZE)
         {
-            _current = 0;
+            _currentSource = 0;
         }
     }
 }
